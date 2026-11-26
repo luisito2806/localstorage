@@ -29,8 +29,26 @@
         const lista = document.getElementById("lista");
         const borrarTodo = document.getElementById("borrarTodo");
 
-        // Cargar tareas guardadas o crear arreglo vacío
-        let tareas = JSON.parse(localStorage.getItem("tareas")) || [];
+        // Cargar tareas guardadas o crear arreglo vacío.
+        // Si lo guardado está dañado o alterado, se descarta lo que no tenga el formato esperado.
+        let tareas = cargarTareas();
+
+        function cargarTareas() {
+            try {
+                const guardadas = JSON.parse(localStorage.getItem("tareas"));
+                if (!Array.isArray(guardadas)) {
+                    return [];
+                }
+                return guardadas.filter(function(tarea) {
+                    return tarea &&
+                        Number.isFinite(tarea.id) &&
+                        typeof tarea.texto === "string" &&
+                        typeof tarea.completada === "boolean";
+                });
+            } catch (error) {
+                return [];
+            }
+        }
 
         // Mostrar las tareas al cargar la página
         mostrarTareas();
@@ -66,28 +84,32 @@
             );
         }
 
+        // Se arma cada tarea con elementos y textContent, nunca con innerHTML:
+        // así el texto que escribe el usuario no puede inyectar HTML ni código.
         function mostrarTareas() {
-            lista.innerHTML = "";
+            lista.replaceChildren();
 
             tareas.forEach(function(tarea) {
                 const li = document.createElement("li");
 
-                li.innerHTML = `
-                    <span>
-                        ${tarea.completada ? "✅" : "❌"}
-                        ${tarea.texto}
-                    </span>
-                `;
+                const texto = document.createElement("span");
+                texto.textContent = (tarea.completada ? "✅ " : "❌ ") + tarea.texto + " ";
 
-                li.innerHTML += `
-                    <button onclick="completarTarea(${tarea.id})">
-                        Completar
-                    </button>
-                    <button onclick="eliminarTarea(${tarea.id})">
-                        Eliminar
-                    </button>
-                `;
+                const botonCompletar = document.createElement("button");
+                botonCompletar.type = "button";
+                botonCompletar.textContent = "Completar";
+                botonCompletar.addEventListener("click", function() {
+                    completarTarea(tarea.id);
+                });
 
+                const botonEliminar = document.createElement("button");
+                botonEliminar.type = "button";
+                botonEliminar.textContent = "Eliminar";
+                botonEliminar.addEventListener("click", function() {
+                    eliminarTarea(tarea.id);
+                });
+
+                li.append(texto, botonCompletar, " ", botonEliminar);
                 lista.appendChild(li);
             });
         }
